@@ -1,0 +1,468 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>Advanced Color Palette Generator</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
+    <link rel="stylesheet" href="style.css">
+</head>
+<body class="bg-gray-900 text-white overflow-hidden h-[100dvh] w-screen flex flex-col font-sans">
+
+    <header class="shrink-0 bg-gray-800/90 backdrop-blur border-b border-gray-700/80 px-2 sm:px-4 py-2 flex items-center justify-between gap-1.5 sm:gap-3 z-20 shadow-lg">
+        <div class="flex items-center gap-1.5 shrink-0">
+            <span id="color-count-badge" class="bg-gray-900/90 border border-gray-700 text-blue-400 font-mono text-xs px-2.5 py-1.5 rounded-lg font-bold tracking-wide shadow-inner">
+                5 colors
+            </span>
+        </div>
+
+        <div class="flex items-center gap-1 shrink-0">
+            <button id="btn-add" class="h-8 px-2.5 bg-blue-600 hover:bg-blue-500 text-white rounded-lg transition-all text-xs font-semibold flex items-center justify-center gap-1 shadow-md active:scale-95" title="Add new color swatch">
+                <i class="fa-solid fa-plus text-xs"></i>
+                <span class="hidden sm:inline">Add</span>
+            </button>
+            <button id="btn-random-all" class="h-8 px-2.5 bg-indigo-600 hover:bg-indigo-500 text-white rounded-lg transition-all text-xs font-semibold flex items-center justify-center gap-1 shadow-md active:scale-95" title="Randomize unlocked colors (Spacebar)">
+                <i class="fa-solid fa-shuffle text-xs"></i>
+                <span class="hidden sm:inline">Gen</span>
+            </button>
+            <button id="btn-toggle-layout" class="h-8 px-2 bg-gray-700/80 hover:bg-gray-700 border border-gray-600/60 text-gray-200 rounded-lg transition-all text-xs font-medium flex items-center justify-center gap-1 shadow-sm active:scale-95" title="Cycle View Mode: Grid / Rows / Columns">
+                <i class="fa-solid fa-border-all text-xs" id="icon-layout"></i>
+                <span id="label-layout" class="hidden sm:inline">Grid</span>
+            </button>
+        </div>
+
+        <div class="flex items-center gap-1 shrink-0">
+            <div class="flex items-center bg-gray-900/80 p-0.5 border border-gray-700/80 rounded-lg shadow-inner">
+                <button id="btn-undo-global" class="h-7 px-1.5 text-xs font-medium text-gray-300 hover:text-white hover:bg-gray-700/70 rounded-md transition-all flex items-center gap-1 disabled:opacity-30 disabled:hover:bg-transparent disabled:cursor-not-allowed" title="Undo (Ctrl+Z)">
+                    <i class="fa-solid fa-rotate-left text-[10px]"></i>
+                </button>
+                <div class="w-px h-3 bg-gray-700/80 my-auto"></div>
+                <button id="btn-redo-global" class="h-7 px-1.5 text-xs font-medium text-gray-300 hover:text-white hover:bg-gray-700/70 rounded-md transition-all flex items-center gap-1 disabled:opacity-30 disabled:hover:bg-transparent disabled:cursor-not-allowed" title="Redo (Ctrl+Y)">
+                    <i class="fa-solid fa-rotate-right text-[10px]"></i>
+                </button>
+            </div>
+
+            <div class="flex items-center gap-1">
+                <button id="btn-copy-all" class="h-8 px-2 text-gray-300 hover:text-white bg-gray-700/70 hover:bg-gray-700 border border-gray-600/50 rounded-lg transition-all flex items-center justify-center gap-1 text-xs font-medium" title="Copy Palette">
+                    <i class="fa-regular fa-copy text-xs"></i>
+                    <span class="hidden md:inline">Copy</span>
+                </button>
+                <button id="btn-import" class="h-8 px-2 text-gray-300 hover:text-white bg-gray-700/70 hover:bg-gray-700 border border-gray-600/50 rounded-lg transition-all flex items-center justify-center gap-1 text-xs font-medium" title="Import Palette">
+                    <i class="fa-solid fa-file-import text-xs"></i>
+                    <span class="hidden md:inline">Import</span>
+                </button>
+                <button id="btn-export" class="h-8 px-2 text-gray-300 hover:text-white bg-gray-700/70 hover:bg-gray-700 border border-gray-600/50 rounded-lg transition-all flex items-center justify-center gap-1 text-xs font-medium" title="Export Palette">
+                    <i class="fa-solid fa-download text-xs"></i>
+                    <span class="hidden md:inline">Export</span>
+                </button>
+            </div>
+        </div>
+    </header>
+
+    <main id="palette-container" class="flex-1 flex w-full h-0 overflow-y-auto relative p-1 gap-1">
+    </main>
+
+    <!-- Inspector Modal -->
+    <div id="inspector-modal" class="fixed inset-0 bg-black/60 backdrop-blur-sm z-50 hidden flex items-center justify-center p-3 opacity-0 transition-opacity duration-300">
+        <div class="bg-gray-800 rounded-xl shadow-2xl w-full max-w-lg max-h-[90vh] flex flex-col overflow-hidden transform scale-95 transition-transform duration-300" id="inspector-content">
+            <div class="flex justify-between items-center p-4 border-b border-gray-700 shrink-0" id="inspector-header">
+                <h2 class="text-lg sm:text-xl font-bold flex items-center gap-3">
+                    <div class="flex rounded border border-gray-600 shadow-inner overflow-hidden">
+                        <div id="inspector-original-preview" class="w-6 h-6" title="Original Color"></div>
+                        <div id="inspector-new-preview" class="w-6 h-6 border-l border-gray-600" title="New Color"></div>
+                    </div>
+                    Color Inspector
+                </h2>
+                <button id="btn-close-inspector" class="text-gray-400 hover:text-white p-1 rounded-md" title="Close Inspector">
+                    <i class="fa-solid fa-xmark text-xl"></i>
+                </button>
+            </div>
+
+            <div class="flex border-b border-gray-700 shrink-0 bg-gray-800">
+                <button id="tab-picker" class="flex-1 py-3 px-2 text-center text-sm font-semibold text-blue-400 border-b-2 border-blue-400 transition-colors flex items-center justify-center gap-2" title="Values & Picker">
+                    <i class="fa-solid fa-sliders"></i> Values & Picker
+                </button>
+                <button id="tab-harmony" class="flex-1 py-3 px-2 text-center text-sm font-semibold text-gray-400 border-b-2 border-transparent hover:text-white transition-colors flex items-center justify-center gap-2" title="Harmonies">
+                    <i class="fa-solid fa-palette"></i> Harmonies & Wheel
+                </button>
+            </div>
+
+            <div class="flex-1 overflow-y-auto">
+                <div id="content-picker" class="p-4 sm:p-6 space-y-4">
+                    <input type="color" id="native-color-picker" class="w-full" title="Pick color">
+                    
+                    <div>
+                        <label class="text-xs text-gray-400 uppercase tracking-wider mb-1 block font-semibold">HEX Code</label>
+                        <div class="flex items-center bg-gray-900 border border-gray-700 rounded-md overflow-hidden focus-within:ring-2 focus-within:ring-blue-500">
+                            <span class="px-3 text-gray-500 font-mono font-bold">#</span>
+                            <input type="text" id="input-hex" maxlength="6" class="bg-transparent text-white font-mono font-bold uppercase text-sm w-full p-2.5 outline-none" placeholder="FFFFFF">
+                        </div>
+                    </div>
+
+                    <!-- RGB Section with Draggable Channels & Steppers -->
+                    <div>
+                        <div class="flex justify-between items-center mb-1">
+                            <label class="text-xs text-gray-400 uppercase tracking-wider block font-semibold">RGB Channels (0-255)</label>
+                            <span class="text-[10px] text-gray-500 italic">Drag channel cards onto each other to swap</span>
+                        </div>
+                        <div class="grid grid-cols-3 gap-2">
+                            <!-- R -->
+                            <div class="channel-card flex items-center bg-gray-900 border border-gray-700 rounded-md overflow-hidden p-1 gap-1" draggable="true" data-channel="r" data-group="rgb">
+                                <span class="text-xs text-red-400 font-bold px-1 select-none flex items-center gap-1" title="Drag to swap"><i class="fa-solid fa-grip-vertical text-[10px] opacity-40"></i> R</span>
+                                <input type="number" id="input-r" min="0" max="255" class="bg-transparent text-white text-xs w-full text-center font-mono outline-none">
+                                <div class="flex flex-col gap-0.5 border-l border-gray-700 pl-1">
+                                    <button type="button" class="btn-step hover:bg-gray-700 text-gray-300 rounded px-1 py-0.5 text-[9px]" data-target="input-r" data-step="1"><i class="fa-solid fa-chevron-up"></i></button>
+                                    <button type="button" class="btn-step hover:bg-gray-700 text-gray-300 rounded px-1 py-0.5 text-[9px]" data-target="input-r" data-step="-1"><i class="fa-solid fa-chevron-down"></i></button>
+                                </div>
+                            </div>
+                            <!-- G -->
+                            <div class="channel-card flex items-center bg-gray-900 border border-gray-700 rounded-md overflow-hidden p-1 gap-1" draggable="true" data-channel="g" data-group="rgb">
+                                <span class="text-xs text-green-400 font-bold px-1 select-none flex items-center gap-1" title="Drag to swap"><i class="fa-solid fa-grip-vertical text-[10px] opacity-40"></i> G</span>
+                                <input type="number" id="input-g" min="0" max="255" class="bg-transparent text-white text-xs w-full text-center font-mono outline-none">
+                                <div class="flex flex-col gap-0.5 border-l border-gray-700 pl-1">
+                                    <button type="button" class="btn-step hover:bg-gray-700 text-gray-300 rounded px-1 py-0.5 text-[9px]" data-target="input-g" data-step="1"><i class="fa-solid fa-chevron-up"></i></button>
+                                    <button type="button" class="btn-step hover:bg-gray-700 text-gray-300 rounded px-1 py-0.5 text-[9px]" data-target="input-g" data-step="-1"><i class="fa-solid fa-chevron-down"></i></button>
+                                </div>
+                            </div>
+                            <!-- B -->
+                            <div class="channel-card flex items-center bg-gray-900 border border-gray-700 rounded-md overflow-hidden p-1 gap-1" draggable="true" data-channel="b" data-group="rgb">
+                                <span class="text-xs text-blue-400 font-bold px-1 select-none flex items-center gap-1" title="Drag to swap"><i class="fa-solid fa-grip-vertical text-[10px] opacity-40"></i> B</span>
+                                <input type="number" id="input-b" min="0" max="255" class="bg-transparent text-white text-xs w-full text-center font-mono outline-none">
+                                <div class="flex flex-col gap-0.5 border-l border-gray-700 pl-1">
+                                    <button type="button" class="btn-step hover:bg-gray-700 text-gray-300 rounded px-1 py-0.5 text-[9px]" data-target="input-b" data-step="1"><i class="fa-solid fa-chevron-up"></i></button>
+                                    <button type="button" class="btn-step hover:bg-gray-700 text-gray-300 rounded px-1 py-0.5 text-[9px]" data-target="input-b" data-step="-1"><i class="fa-solid fa-chevron-down"></i></button>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- HSL Section with Draggable Channels & Steppers -->
+                    <div>
+                        <div class="flex justify-between items-center mb-1">
+                            <label class="text-xs text-gray-400 uppercase tracking-wider block font-semibold">HSL Values (H:0-360, S/L:0-100%)</label>
+                            <span class="text-[10px] text-gray-500 italic">Drag S ⇄ L to swap</span>
+                        </div>
+                        <div class="grid grid-cols-3 gap-2">
+                            <!-- H -->
+                            <div class="channel-card flex items-center bg-gray-900 border border-gray-700 rounded-md overflow-hidden p-1 gap-1" draggable="true" data-channel="h" data-group="hsl">
+                                <span class="text-xs text-amber-400 font-bold px-1 select-none flex items-center gap-1"><i class="fa-solid fa-grip-vertical text-[10px] opacity-40"></i> H</span>
+                                <input type="number" id="input-h" min="0" max="360" class="bg-transparent text-white text-xs w-full text-center font-mono outline-none">
+                                <div class="flex flex-col gap-0.5 border-l border-gray-700 pl-1">
+                                    <button type="button" class="btn-step hover:bg-gray-700 text-gray-300 rounded px-1 py-0.5 text-[9px]" data-target="input-h" data-step="1"><i class="fa-solid fa-chevron-up"></i></button>
+                                    <button type="button" class="btn-step hover:bg-gray-700 text-gray-300 rounded px-1 py-0.5 text-[9px]" data-target="input-h" data-step="-1"><i class="fa-solid fa-chevron-down"></i></button>
+                                </div>
+                            </div>
+                            <!-- S -->
+                            <div class="channel-card flex items-center bg-gray-900 border border-gray-700 rounded-md overflow-hidden p-1 gap-1" draggable="true" data-channel="s" data-group="hsl">
+                                <span class="text-xs text-purple-400 font-bold px-1 select-none flex items-center gap-1"><i class="fa-solid fa-grip-vertical text-[10px] opacity-40"></i> S</span>
+                                <input type="number" id="input-s" min="0" max="100" class="bg-transparent text-white text-xs w-full text-center font-mono outline-none">
+                                <div class="flex flex-col gap-0.5 border-l border-gray-700 pl-1">
+                                    <button type="button" class="btn-step hover:bg-gray-700 text-gray-300 rounded px-1 py-0.5 text-[9px]" data-target="input-s" data-step="1"><i class="fa-solid fa-chevron-up"></i></button>
+                                    <button type="button" class="btn-step hover:bg-gray-700 text-gray-300 rounded px-1 py-0.5 text-[9px]" data-target="input-s" data-step="-1"><i class="fa-solid fa-chevron-down"></i></button>
+                                </div>
+                            </div>
+                            <!-- L -->
+                            <div class="channel-card flex items-center bg-gray-900 border border-gray-700 rounded-md overflow-hidden p-1 gap-1" draggable="true" data-channel="l" data-group="hsl">
+                                <span class="text-xs text-sky-400 font-bold px-1 select-none flex items-center gap-1"><i class="fa-solid fa-grip-vertical text-[10px] opacity-40"></i> L</span>
+                                <input type="number" id="input-l" min="0" max="100" class="bg-transparent text-white text-xs w-full text-center font-mono outline-none">
+                                <div class="flex flex-col gap-0.5 border-l border-gray-700 pl-1">
+                                    <button type="button" class="btn-step hover:bg-gray-700 text-gray-300 rounded px-1 py-0.5 text-[9px]" data-target="input-l" data-step="1"><i class="fa-solid fa-chevron-up"></i></button>
+                                    <button type="button" class="btn-step hover:bg-gray-700 text-gray-300 rounded px-1 py-0.5 text-[9px]" data-target="input-l" data-step="-1"><i class="fa-solid fa-chevron-down"></i></button>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- CMYK Section with Draggable Channels & Steppers -->
+                    <div>
+                        <div class="flex justify-between items-center mb-1">
+                            <label class="text-xs text-gray-400 uppercase tracking-wider block font-semibold">CMYK Values (0-100%)</label>
+                            <span class="text-[10px] text-gray-500 italic">Drag C, M, Y, K to swap</span>
+                        </div>
+                        <div class="grid grid-cols-4 gap-1.5">
+                            <!-- C -->
+                            <div class="channel-card flex items-center bg-gray-900 border border-gray-700 rounded-md overflow-hidden p-1 gap-0.5" draggable="true" data-channel="c" data-group="cmyk">
+                                <span class="text-[10px] text-cyan-400 font-bold px-0.5 select-none flex items-center gap-0.5"><i class="fa-solid fa-grip-vertical text-[8px] opacity-40"></i> C</span>
+                                <input type="number" id="input-c" min="0" max="100" class="bg-transparent text-white text-xs w-full text-center font-mono outline-none">
+                                <div class="flex flex-col gap-0.5 border-l border-gray-700 pl-0.5">
+                                    <button type="button" class="btn-step hover:bg-gray-700 text-gray-300 rounded px-0.5 py-0.5 text-[8px]" data-target="input-c" data-step="1"><i class="fa-solid fa-chevron-up"></i></button>
+                                    <button type="button" class="btn-step hover:bg-gray-700 text-gray-300 rounded px-0.5 py-0.5 text-[8px]" data-target="input-c" data-step="-1"><i class="fa-solid fa-chevron-down"></i></button>
+                                </div>
+                            </div>
+                            <!-- M -->
+                            <div class="channel-card flex items-center bg-gray-900 border border-gray-700 rounded-md overflow-hidden p-1 gap-0.5" draggable="true" data-channel="m" data-group="cmyk">
+                                <span class="text-[10px] text-pink-400 font-bold px-0.5 select-none flex items-center gap-0.5"><i class="fa-solid fa-grip-vertical text-[8px] opacity-40"></i> M</span>
+                                <input type="number" id="input-m" min="0" max="100" class="bg-transparent text-white text-xs w-full text-center font-mono outline-none">
+                                <div class="flex flex-col gap-0.5 border-l border-gray-700 pl-0.5">
+                                    <button type="button" class="btn-step hover:bg-gray-700 text-gray-300 rounded px-0.5 py-0.5 text-[8px]" data-target="input-m" data-step="1"><i class="fa-solid fa-chevron-up"></i></button>
+                                    <button type="button" class="btn-step hover:bg-gray-700 text-gray-300 rounded px-0.5 py-0.5 text-[8px]" data-target="input-m" data-step="-1"><i class="fa-solid fa-chevron-down"></i></button>
+                                </div>
+                            </div>
+                            <!-- Y -->
+                            <div class="channel-card flex items-center bg-gray-900 border border-gray-700 rounded-md overflow-hidden p-1 gap-0.5" draggable="true" data-channel="y" data-group="cmyk">
+                                <span class="text-[10px] text-yellow-400 font-bold px-0.5 select-none flex items-center gap-0.5"><i class="fa-solid fa-grip-vertical text-[8px] opacity-40"></i> Y</span>
+                                <input type="number" id="input-y" min="0" max="100" class="bg-transparent text-white text-xs w-full text-center font-mono outline-none">
+                                <div class="flex flex-col gap-0.5 border-l border-gray-700 pl-0.5">
+                                    <button type="button" class="btn-step hover:bg-gray-700 text-gray-300 rounded px-0.5 py-0.5 text-[8px]" data-target="input-y" data-step="1"><i class="fa-solid fa-chevron-up"></i></button>
+                                    <button type="button" class="btn-step hover:bg-gray-700 text-gray-300 rounded px-0.5 py-0.5 text-[8px]" data-target="input-y" data-step="-1"><i class="fa-solid fa-chevron-down"></i></button>
+                                </div>
+                            </div>
+                            <!-- K -->
+                            <div class="channel-card flex items-center bg-gray-900 border border-gray-700 rounded-md overflow-hidden p-1 gap-0.5" draggable="true" data-channel="k" data-group="cmyk">
+                                <span class="text-[10px] text-gray-400 font-bold px-0.5 select-none flex items-center gap-0.5"><i class="fa-solid fa-grip-vertical text-[8px] opacity-40"></i> K</span>
+                                <input type="number" id="input-k" min="0" max="100" class="bg-transparent text-white text-xs w-full text-center font-mono outline-none">
+                                <div class="flex flex-col gap-0.5 border-l border-gray-700 pl-0.5">
+                                    <button type="button" class="btn-step hover:bg-gray-700 text-gray-300 rounded px-0.5 py-0.5 text-[8px]" data-target="input-k" data-step="1"><i class="fa-solid fa-chevron-up"></i></button>
+                                    <button type="button" class="btn-step hover:bg-gray-700 text-gray-300 rounded px-0.5 py-0.5 text-[8px]" data-target="input-k" data-step="-1"><i class="fa-solid fa-chevron-down"></i></button>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <div id="content-harmony" class="p-4 sm:p-6 hidden flex-col items-center w-full space-y-4">
+                    
+                    <!-- Wheel Mode Controls Toggle & Constraints -->
+                    <div class="bg-gray-900/90 p-3 rounded-xl border border-gray-700 w-full space-y-3">
+                        <div class="flex items-center justify-between gap-2">
+                            <span class="text-xs font-semibold uppercase tracking-wider text-gray-300">Wheel Drag Interaction:</span>
+                            <div class="flex bg-gray-800 p-0.5 rounded-lg border border-gray-700">
+                                <button id="btn-mode-color" class="px-3 py-1 text-xs font-bold rounded-md bg-blue-600 text-white transition-all flex items-center gap-1.5">
+                                    <i class="fa-solid fa-palette text-[10px]"></i> Color Picker Mode
+                                </button>
+                                <button id="btn-mode-mask" class="px-3 py-1 text-xs font-bold rounded-md text-gray-400 hover:text-white transition-all flex items-center gap-1.5">
+                                    <i class="fa-solid fa-draw-polygon text-[10px]"></i> Mask Edit Mode
+                                </button>
+                            </div>
+                        </div>
+
+                        <div class="flex items-center justify-between border-t border-gray-800 pt-2">
+                            <label for="toggle-constrain-gamut" class="text-xs font-medium text-gray-300 flex items-center gap-2 cursor-pointer select-none">
+                                <input type="checkbox" id="toggle-constrain-gamut" class="w-4 h-4 rounded text-blue-600 bg-gray-800 border-gray-700 focus:ring-blue-500 accent-blue-600">
+                                <span>Constrain colors to gamut mask area</span>
+                            </label>
+                            <span id="mask-mode-hint" class="text-[11px] font-mono text-blue-400">Click & Drag to change color</span>
+                        </div>
+                    </div>
+
+                    <div class="flex flex-col md:flex-row gap-6 w-full items-start">
+                        <div class="flex-1 flex flex-col items-center justify-center relative w-full select-none" id="wheel-wrapper">
+                            <div class="relative inline-block">
+                                <canvas id="color-wheel" width="240" height="240" class="rounded-full cursor-crosshair shadow-2xl border-4 border-gray-700 touch-none block mx-auto" style="touch-action: none;"></canvas>
+                                <div id="wheel-overlay" class="absolute inset-0 pointer-events-none"></div>
+                            </div>
+                        </div>
+
+                        <div class="flex-1 flex flex-col space-y-3 w-full">
+                            <div>
+                                <label class="text-xs text-gray-400 uppercase tracking-wider mb-1 block font-semibold">Harmony Type</label>
+                                <select id="harmony-type" class="bg-gray-900 border border-gray-700 text-white text-sm rounded-md block w-full p-2.5 focus:ring-blue-500">
+                                    <option value="monochromatic">Monochromatic (10 Swatches)</option>
+                                    <option value="complementary" selected>Complementary</option>
+                                    <option value="analogous">Analogous</option>
+                                    <option value="triadic">Triadic</option>
+                                    <option value="tetradic">Tetradic</option>
+                                    <option value="split">Split Complementary</option>
+                                    <option value="double">Double Split Complementary</option>
+                                </select>
+                            </div>
+                            <div>
+                                <label class="text-xs text-gray-400 uppercase tracking-wider mb-1 block font-semibold">Gamut Mask Shape</label>
+                                <select id="gamut-mask-type" class="bg-gray-900 border border-gray-700 text-white text-sm rounded-md block w-full p-2.5 focus:ring-blue-500">
+                                    <option value="none">None (Full Wheel)</option>
+                                    <option value="wedge">Wedge (Analogous Sector)</option>
+                                    <option value="bar">Complementary Bar</option>
+                                    <option value="triangle">Triangle (Triadic Mask)</option>
+                                    <option value="rectangle">Rectangle (Tetradic Mask)</option>
+                                    <option value="hexagon">Hexagon (6-Tone Mask)</option>
+                                    <option value="ellipse">Mood Ellipse (Oval Mask)</option>
+                                    <option value="star">Star (Accent Gamut)</option>
+                                    <option value="monochromatic">Mono Slice (Narrow Angle)</option>
+                                    <option value="tri-wedge">Triple Wedge (Tri-Sector)</option>
+                                </select>
+                            </div>
+
+                            <div>
+                                <label class="text-xs text-gray-400 uppercase tracking-wider mb-1 block font-semibold">Wheel Ring Mode</label>
+                                <select id="wheel-ring-mode" class="bg-gray-900 border border-gray-700 text-white text-sm rounded-md block w-full p-2.5 focus:ring-blue-500">
+                                    <option value="standard">Standard HSL (Center Saturation)</option>
+                                    <option value="shades">Monochromatic Ring (Center Lightness)</option>
+                                    <option value="temperature">Color Temperature Ring</option>
+                                </select>
+                            </div>
+                        </div>
+                    </div>
+                    <p class="text-xs text-gray-400 text-center">Tap any generated harmony swatch below to apply it.</p>
+                    <div id="harmony-results" class="w-full flex justify-center gap-2 flex-wrap"></div>
+                </div>
+            </div>
+            <div class="p-4 border-t border-gray-700 flex justify-end gap-3 bg-gray-800 shrink-0">
+                <button id="btn-inspector-cancel" class="px-4 py-2 bg-gray-700 hover:bg-gray-600 text-white text-sm font-semibold rounded-lg transition-colors">Cancel</button>
+                <button id="btn-inspector-accept" class="px-4 py-2 bg-blue-600 hover:bg-blue-500 text-white text-sm font-semibold rounded-lg transition-colors flex items-center gap-2"><i class="fa-solid fa-check"></i> Accept</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Import Modal -->
+    <div id="import-modal" class="fixed inset-0 bg-black/60 backdrop-blur-sm z-50 hidden flex items-center justify-center p-3 opacity-0 transition-opacity duration-300">
+        <div class="bg-gray-800 rounded-xl shadow-2xl w-full max-w-xl m-4 overflow-hidden transform scale-95 transition-transform duration-300 max-h-[85vh] flex flex-col">
+            <div class="flex justify-between items-center p-4 border-b border-gray-700 shrink-0">
+                <h2 class="text-xl font-bold">Import Palette</h2>
+                <button id="btn-close-import" class="text-gray-400 hover:text-white p-1" title="Close"><i class="fa-solid fa-xmark text-xl"></i></button>
+            </div>
+            <div class="p-6 space-y-6 overflow-y-auto flex-1">
+                <div>
+                    <label class="block mb-2 text-sm font-medium text-gray-300">Extract from Image</label>
+                    <div id="import-dropzone-wrapper" class="flex flex-col items-center justify-center w-full">
+                        <label for="dropzone-file" id="dropzone-label" class="flex flex-col items-center justify-center w-full h-32 border-2 border-gray-600 border-dashed rounded-lg cursor-pointer bg-gray-700 hover:bg-gray-600 transition-colors">
+                            <div class="flex flex-col items-center justify-center pt-5 pb-6">
+                                <i class="fa-solid fa-cloud-arrow-up text-2xl text-gray-400 mb-2"></i>
+                                <p class="mb-2 text-sm text-gray-400"><span class="font-semibold">Click to upload</span> or drag and drop</p>
+                                <p class="text-xs text-gray-500">PNG, JPG, WEBP</p>
+                            </div>
+                            <input id="dropzone-file" type="file" class="hidden" accept="image/*" />
+                        </label>
+                    </div>
+
+                    <div id="image-picker-container" class="hidden mt-4 space-y-3">
+                        <div class="flex items-center justify-between text-xs text-gray-400">
+                            <span>Click anywhere on the image to sample a color:</span>
+                            <button id="btn-reset-image" class="text-blue-400 hover:underline">Upload Different Image</button>
+                        </div>
+                        <div class="relative overflow-hidden rounded-lg border border-gray-700 bg-black/40 max-h-60 flex justify-center items-center">
+                            <canvas id="interactive-image-canvas" class="cursor-crosshair max-w-full h-auto object-contain"></canvas>
+                        </div>
+                        <div class="flex items-center gap-3 bg-gray-900/60 p-3 rounded-lg border border-gray-700">
+                            <div id="sampled-color-preview" class="w-8 h-8 rounded border border-white/20 shrink-0 bg-white"></div>
+                            <div class="flex-1 text-xs">
+                                <span class="text-gray-400 block">Sampled Color:</span>
+                                <span id="sampled-color-hex" class="font-mono font-bold text-sm text-white">#FFFFFF</span>
+                            </div>
+                            <button id="btn-add-sampled-color" class="px-3 py-1.5 bg-blue-600 hover:bg-blue-500 text-white text-xs font-semibold rounded transition-colors">Add to Palette</button>
+                        </div>
+                    </div>
+
+                    <div class="mt-4 flex items-center justify-between gap-4">
+                        <div class="flex-1">
+                            <label class="block text-xs font-medium text-gray-300 mb-1">Number of colors to extract:</label>
+                            <input type="range" id="extract-count-slider" min="3" max="15" value="5" class="w-full accent-blue-500">
+                        </div>
+                        <span id="extract-count-val" class="font-mono text-sm font-bold bg-gray-900 px-3 py-1.5 rounded border border-gray-700">5</span>
+                        <button id="btn-auto-extract" class="px-4 py-2 bg-indigo-600 hover:bg-indigo-500 text-white text-xs font-semibold rounded-lg transition-colors disabled:opacity-30" disabled>Auto Extract</button>
+                    </div>
+                    <canvas id="image-canvas" class="hidden"></canvas>
+                </div>
+
+                <div class="flex items-center justify-center">
+                    <span class="h-px bg-gray-600 flex-1"></span>
+                    <span class="px-3 text-sm text-gray-500">OR</span>
+                    <span class="h-px bg-gray-600 flex-1"></span>
+                </div>
+                <div>
+                    <label class="block mb-2 text-sm font-medium text-gray-300">Import from Free Text / CSS</label>
+                    <textarea id="import-textarea" rows="3" class="block p-2.5 w-full text-sm bg-gray-900 border border-gray-700 rounded-lg text-white focus:ring-blue-500 placeholder-gray-500" placeholder="Paste CSS variables, JSON, or comma-separated HEX/RGB values..."></textarea>
+                    <button id="btn-parse-text" class="mt-3 w-full text-white bg-blue-600 hover:bg-blue-700 font-medium rounded-lg text-sm px-5 py-2.5 text-center transition-colors">Extract Colors</button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Export Modal -->
+    <div id="export-modal" class="fixed inset-0 bg-black/60 backdrop-blur-sm z-50 hidden flex items-center justify-center p-3 opacity-0 transition-opacity duration-300">
+        <div class="bg-gray-800 rounded-xl shadow-2xl w-full max-w-md m-4 overflow-hidden transform scale-95 transition-transform duration-300 max-h-[85vh] flex flex-col">
+            <div class="flex justify-between items-center p-4 border-b border-gray-700 shrink-0">
+                <h2 class="text-xl font-bold">Export Palette</h2>
+                <button id="btn-close-export" class="text-gray-400 hover:text-white p-1" title="Close"><i class="fa-solid fa-xmark text-xl"></i></button>
+            </div>
+            <div class="p-6 space-y-4 overflow-y-auto flex-1">
+                <div>
+                    <label class="block mb-1.5 text-sm font-medium text-gray-300">File Format</label>
+                    <select id="export-format" class="bg-gray-900 border border-gray-700 text-white text-sm rounded-md block w-full p-2.5">
+                        <option value="png">PNG Image</option>
+                        <option value="svg">SVG Vector</option>
+                        <option value="pdf">PDF Document</option>
+                    </select>
+                </div>
+                <div id="export-preset-container">
+                    <label class="block mb-1.5 text-sm font-medium text-gray-300">Aspect Ratio Preset</label>
+                    <select id="export-preset" class="bg-gray-900 border border-gray-700 text-white text-sm rounded-md block w-full p-2.5">
+                        <option value="wallpaper">Device Wallpaper Ratio</option>
+                        <option value="viewport">Current Viewport Ratio</option>
+                        <option value="square">Square Ratio (1:1)</option>
+                        <option value="16:9">16:9 Standard Widescreen</option>
+                        <option value="9:16">9:16 Mobile Vertical Wallpaper</option>
+                        <option value="4:3">4:3 Standard Monitor</option>
+                        <option value="21:9">21:9 Ultrawide</option>
+                    </select>
+                </div>
+                <div id="export-quality-container">
+                    <label class="block mb-1.5 text-sm font-medium text-gray-300">Resolution / Quality</label>
+                    <select id="export-resolution" class="bg-gray-900 border border-gray-700 text-white text-sm rounded-md block w-full p-2.5">
+                        <option value="360p">360p (Low)</option>
+                        <option value="480p">480p (SD)</option>
+                        <option value="720p">720p (HD)</option>
+                        <option value="1080p" selected>1080p (Full HD)</option>
+                        <option value="1440p">1440p (QHD)</option>
+                        <option value="4k">4K (Ultra HD)</option>
+                    </select>
+                </div>
+                <div class="text-xs text-gray-400 bg-gray-900/60 p-3 rounded-lg border border-gray-700 font-mono space-y-1">
+                    <div class="flex justify-between items-center"><span>Calculated Output:</span><span id="export-dim-preview" class="text-blue-400 font-bold">1920 x 1080 px</span></div>
+                    <div class="flex justify-between items-center text-[11px] text-gray-500"><span>Filename Preview:</span><span id="export-filename-preview" class="truncate max-w-[220px]">palette.png</span></div>
+                </div>
+                <button id="btn-execute-export" class="w-full text-white bg-green-600 hover:bg-green-700 font-medium rounded-lg text-sm px-5 py-2.5 text-center transition-colors flex items-center justify-center gap-2 mt-4">
+                    <i class="fa-solid fa-download"></i> Download Palette
+                </button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Copy Modal -->
+    <div id="copy-modal" class="fixed inset-0 bg-black/60 backdrop-blur-sm z-50 hidden flex items-center justify-center p-3 opacity-0 transition-opacity duration-300">
+        <div class="bg-gray-800 rounded-xl shadow-2xl w-full max-w-md m-4 overflow-hidden transform scale-95 transition-transform duration-300 max-h-[85vh] flex flex-col">
+            <div class="flex justify-between items-center p-4 border-b border-gray-700 shrink-0">
+                <h2 class="text-xl font-bold">Copy Palette Options</h2>
+                <button id="btn-close-copy" class="text-gray-400 hover:text-white p-1" title="Close"><i class="fa-solid fa-xmark text-xl"></i></button>
+            </div>
+            <div class="p-5 space-y-4 overflow-y-auto flex-1">
+                <div>
+                    <label class="block mb-2 text-xs font-semibold text-gray-400 uppercase tracking-wider">1. Choose Format Style</label>
+                    <div class="grid grid-cols-3 gap-2">
+                        <button class="copy-style-btn py-2 px-3 rounded-lg border border-blue-500 bg-blue-600/30 text-blue-300 text-xs font-semibold transition-all text-center" data-style="raw">Raw Values</button>
+                        <button class="copy-style-btn py-2 px-3 rounded-lg border border-gray-700 bg-gray-900 text-gray-300 text-xs font-semibold transition-all text-center" data-style="css">CSS Values</button>
+                        <button class="copy-style-btn py-2 px-3 rounded-lg border border-gray-700 bg-gray-900 text-gray-300 text-xs font-semibold transition-all text-center" data-style="json">JSON List</button>
+                    </div>
+                </div>
+
+                <div class="pt-2 border-t border-gray-700">
+                    <label class="block mb-2 text-xs font-semibold text-gray-400 uppercase tracking-wider">2. Tap to Copy</label>
+                    <div class="grid grid-cols-2 gap-2.5">
+                        <button class="btn-copy-action py-3 px-4 bg-gray-700 hover:bg-gray-600 rounded-lg text-xs font-mono font-bold text-white transition-all flex items-center justify-center gap-2 shadow" data-type="hex">
+                            <i class="fa-solid fa-hashtag text-blue-400"></i> Copy Hex (#xxxxxx)
+                        </button>
+                        <button class="btn-copy-action py-3 px-4 bg-gray-700 hover:bg-gray-600 rounded-lg text-xs font-mono font-bold text-white transition-all flex items-center justify-center gap-2 shadow" data-type="rgb">
+                            <i class="fa-solid fa-palette text-green-400"></i> Copy RGB (r, g, b)
+                        </button>
+                        <button class="btn-copy-action py-3 px-4 bg-gray-700 hover:bg-gray-600 rounded-lg text-xs font-mono font-bold text-white transition-all flex items-center justify-center gap-2 shadow" data-type="hsl">
+                            <i class="fa-solid fa-sliders text-amber-400"></i> Copy HSL (h, s%, l%)
+                        </button>
+                        <button class="btn-copy-action py-3 px-4 bg-gray-700 hover:bg-gray-600 rounded-lg text-xs font-mono font-bold text-white transition-all flex items-center justify-center gap-2 shadow" data-type="cmyk">
+                            <i class="fa-solid fa-droplet text-purple-400"></i> Copy CMYK (c, m, y, k)
+                        </button>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Toast -->
+    <div id="toast" class="fixed bottom-5 left-1/2 transform -translate-x-1/2 bg-gray-800 text-white px-6 py-3 rounded-full shadow-lg opacity-0 transition-opacity duration-300 pointer-events-none z-[100] flex items-center gap-2 border border-gray-700">
+        <i class="fa-solid fa-circle-check text-green-400"></i>
+        <span id="toast-msg">Copied!</span>
+    </div>
+
+    <script src="script.js"></script>
+</body>
+</html>
