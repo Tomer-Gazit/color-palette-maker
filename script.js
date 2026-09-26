@@ -1,6 +1,6 @@
 const MAX_HISTORY = 10;
         let activeSwatchId = null;
-        let viewMode = 'grid'; // 'grid', 'rows', 'cols'
+        let viewMode = 'grid'; // 'grid', 'rows', 'columns'
         let activeCopyStyle = 'raw'; // 'raw', 'css', 'json'
 
         // Gamut Mask State Variables
@@ -1292,15 +1292,17 @@ const MAX_HISTORY = 10;
             updateExportDimPreview();
             modalExport.classList.remove('hidden'); setTimeout(() => modalExport.classList.remove('opacity-0'), 10);
         });
-        document.getElementById('btn-close-export').addEventListener('click', () => {
-            modalExport.classList.add('opacity-0'); setTimeout(() => modalExport.classList.add('hidden'), 300);
-        });
+        function closeExportModal() {
+            modalExport.classList.add('opacity-0');
+            setTimeout(() => modalExport.classList.add('hidden'), 300);
+        }
+        document.getElementById('btn-close-export').addEventListener('click', closeExportModal);
 
         const exportFormatSel = document.getElementById('export-format'), exportPresetSel = document.getElementById('export-preset'), exportQualitySel = document.getElementById('export-resolution');
 
-        function calculateDimensions() {
-            const preset = exportPresetSel.value;
-            const res = exportQualitySel.value;
+        function calculateExportDimensions() {
+            const preset = exportPresetSel ? exportPresetSel.value : 'wallpaper';
+            const res = exportQualitySel ? exportQualitySel.value : '1080p';
             let baseH = 1080;
             if (res === '360p') baseH = 360;
             else if (res === '480p') baseH = 480;
@@ -1318,94 +1320,198 @@ const MAX_HISTORY = 10;
             return { width: Math.round(baseH * aspect), height: baseH };
         }
 
+       // Dynamic Filename Generator based on Palette state
+        function generateExportFilename(format) {
+            const count = pm.colors.length;
+            const hexes = pm.colors.map(c => c.hex.replace('#', '')).join('_');
+            const dims = calculateExportDimensions();
+            return `${count}_colors_palette_${viewMode}-${hexes}-${dims.width}x${dims.height}.${format}`;
+        }
+
+        // Update Export Modal Preview
         function updateExportDimPreview() {
-            const dim = calculateDimensions();
-            document.getElementById('export-dim-preview').innerText = `${dim.width} x ${dim.height} px`;
-            document.getElementById('export-filename-preview').innerText = `palette.${exportFormatSel.value}`;
+            const formatSel = document.getElementById('export-format');
+            const dimPreview = document.getElementById('export-dim-preview');
+            const filenamePreview = document.getElementById('export-filename-preview');
+            
+            if (!formatSel) return;
+            
+            const dims = calculateExportDimensions();
+            const filename = generateExportFilename(formatSel.value);
+
+            if (dimPreview) dimPreview.innerText = `${dims.width} x ${dims.height} px`;
+            if (filenamePreview) filenamePreview.innerText = filename;
         }
 
         [exportFormatSel, exportPresetSel, exportQualitySel].forEach(el => {
-            el.addEventListener('change', updateExportDimPreview);
+            if (el) el.addEventListener('change', updateExportDimPreview);
         });
 
-        document.getElementById('btn-execute-export').addEventListener('click', () => {
-            const format = exportFormatSel.value;
-            const dim = calculateDimensions();
+        // Render Palette Swatches to Offscreen Canvas respecting View Mode
+        function renderPaletteToCanvas(ctx, width, height) {
+            const total = pm.colors.length;
+            if (total === 0) return;
 
-            if (format === 'png') exportPNG(dim.width, dim.height);
-            else if (format === 'svg') exportSVG(dim.width, dim.height);
-            else if (format === 'pdf') exportPDF(dim.width, dim.height);
+            if (viewMode === 'rows') {
+                const rowHeight = height / total;
+                pm.colors.forEach((swatch, i) => {
+                    const y = i * rowHeight;
+                    ctx.fillStyle = swatch.hex;
+                    ctx.fillRect(0, y, width, rowHeight);
 
-            modalExport.classList.add('opacity-0');
-            setTimeout(() => modalExport.classList.add('hidden'), 300);
-        });
+                    const textColor = getContrastColor(swatch.hex);
+                    ctx.fillStyle = textColor;
+                    ctx.font = `bold ${Math.max(16, Math.floor(rowHeight * 0.22))}px monospace`;
+                    ctx.textAlign = 'center';
+                    ctx.textBaseline = 'middle';
+                    ctx.fillText(swatch.hex, width / 2, y + rowHeight / 2);
+                });
+            } else if (viewMode === 'cols') {
+                const colWidth = width / total;
+                pm.colors.forEach((swatch, i) => {
+                    const x = i * colWidth;
+                    ctx.fillStyle = swatch.hex;
+                    ctx.fillRect(x, 0, colWidth, height);
 
-        function exportPNG(w, h) {
+                    const textColor = getContrastColor(swatch.hex);
+                    ctx.fillStyle = textColor;
+                    ctx.font = `bold ${Math.max(14, Math.floor(colWidth * 0.15))}px monospace`;
+                    ctx.textAlign = 'center';
+                    ctx.textBaseline = 'middle';
+                    ctx.fillText(swatch.hex, x + colWidth / 2, height / 2);
+                });
+            } else { // Grid Mode
+                const cols = Math.ceil(Math.sqrt(total));
+                const rows = Math.ceil(total / cols);
+                const cellW = width / cols;
+                const cellH = height / rows;
+
+                pm.colors.forEach((swatch, i) => {
+                    const r = Math.floor(i / cols);
+                    const c = i % cols;
+                    const x = c * cellW;
+                    const y = r * cellH;
+
+                    ctx.fillStyle = swatch.hex;
+                    ctx.fillRect(x, y, cellW, cellH);
+
+                    const textColor = getContrastColor(swatch.hex);
+                    ctx.fillStyle = textColor;
+                    ctx.font = `bold ${Math.max(14, Math.floor(Math.min(cellW, cellH) * 0.18))}px monospace`;
+                    ctx.textAlign = 'center';
+                    ctx.textBaseline = 'middle';
+                    ctx.fillText(swatch.hex, x + cellW / 2, y + cellH / 2);
+                });
+            }
+        }
+
+        // Export PNG Format
+        function exportPNG(width, height, filename) {
             const canvas = document.createElement('canvas');
-            canvas.width = w; canvas.height = h;
+            canvas.width = width;
+            canvas.height = height;
             const ctx = canvas.getContext('2d');
 
-            const swCount = pm.colors.length;
-            const swWidth = w / swCount;
-
-            pm.colors.forEach((sw, i) => {
-                ctx.fillStyle = sw.hex;
-                ctx.fillRect(i * swWidth, 0, swWidth, h);
-
-                ctx.fillStyle = getContrastColor(sw.hex);
-                ctx.font = `bold ${Math.max(16, Math.round(swWidth * 0.12))}px sans-serif`;
-                ctx.textAlign = 'center';
-                ctx.fillText(sw.hex, i * swWidth + swWidth / 2, h / 2);
-            });
+            renderPaletteToCanvas(ctx, width, height);
 
             const link = document.createElement('a');
-            link.download = `palette-${Date.now()}.png`;
+            link.download = filename;
             link.href = canvas.toDataURL('image/png');
             link.click();
         }
 
-        function exportSVG(w, h) {
-            const swCount = pm.colors.length;
-            const swWidth = w / swCount;
-            let rects = '';
+        // Export SVG Format
+        function exportSVG(width, height, filename) {
+            const total = pm.colors.length;
+            let elements = '';
 
-            pm.colors.forEach((sw, i) => {
-                const textCol = getContrastColor(sw.hex);
-                rects += `<g>
-                    <rect x="${i * swWidth}" y="0" width="${swWidth}" height="${h}" fill="${sw.hex}" />
-                    <text x="${i * swWidth + swWidth / 2}" y="${h / 2}" fill="${textCol}" font-size="${Math.max(16, Math.round(swWidth * 0.12))}" font-family="sans-serif" font-weight="bold" text-anchor="middle" dominant-baseline="middle">${sw.hex}</text>
-                </g>`;
-            });
+            if (viewMode === 'rows') {
+                const rowHeight = height / total;
+                pm.colors.forEach((swatch, i) => {
+                    const y = i * rowHeight;
+                    const textColor = getContrastColor(swatch.hex);
+                    const fontSize = Math.max(16, Math.floor(rowHeight * 0.22));
+                    elements += `<rect x="0" y="${y}" width="${width}" height="${rowHeight}" fill="${swatch.hex}" />\n`;
+                    elements += `<text x="${width / 2}" y="${y + rowHeight / 2}" fill="${textColor}" font-family="monospace" font-size="${fontSize}" font-weight="bold" text-anchor="middle" dominant-baseline="central">${swatch.hex}</text>\n`;
+                });
+            } else if (viewMode === 'cols') {
+                const colWidth = width / total;
+                pm.colors.forEach((swatch, i) => {
+                    const x = i * colWidth;
+                    const textColor = getContrastColor(swatch.hex);
+                    const fontSize = Math.max(14, Math.floor(colWidth * 0.15));
+                    elements += `<rect x="${x}" y="0" width="${colWidth}" height="${height}" fill="${swatch.hex}" />\n`;
+                    elements += `<text x="${x + colWidth / 2}" y="${height / 2}" fill="${textColor}" font-family="monospace" font-size="${fontSize}" font-weight="bold" text-anchor="middle" dominant-baseline="central">${swatch.hex}</text>\n`;
+                });
+            } else {
+                const cols = Math.ceil(Math.sqrt(total));
+                const rows = Math.ceil(total / cols);
+                const cellW = width / cols;
+                const cellH = height / rows;
 
-            const svgStr = `<svg xmlns="http://www.w3.org/2000/svg" width="${w}" height="${h}" viewBox="0 0 ${w} ${h}">${rects}</svg>`;
-            const blob = new Blob([svgStr], { type: 'image/svg+xml;charset=utf-8' });
+                pm.colors.forEach((swatch, i) => {
+                    const r = Math.floor(i / cols);
+                    const c = i % cols;
+                    const x = c * cellW;
+                    const y = r * cellH;
+                    const textColor = getContrastColor(swatch.hex);
+                    const fontSize = Math.max(14, Math.floor(Math.min(cellW, cellH) * 0.18));
+
+                    elements += `<rect x="${x}" y="${y}" width="${cellW}" height="${cellH}" fill="${swatch.hex}" />\n`;
+                    elements += `<text x="${x + cellW / 2}" y="${y + cellH / 2}" fill="${textColor}" font-family="monospace" font-size="${fontSize}" font-weight="bold" text-anchor="middle" dominant-baseline="central">${swatch.hex}</text>\n`;
+                });
+            }
+
+            const svgContent = `<svg xmlns="http://www.w3.org/2000/svg" width="${width}" height="${height}" viewBox="0 0 ${width} ${height}">\n${elements}</svg>`;
+            const blob = new Blob([svgContent], { type: 'image/svg+xml;charset=utf-8' });
+            const url = URL.createObjectURL(blob);
             const link = document.createElement('a');
-            link.download = `palette-${Date.now()}.svg`;
-            link.href = URL.createObjectURL(blob);
+            link.href = url;
+            link.download = filename;
             link.click();
+            URL.revokeObjectURL(url);
         }
 
-        function exportPDF(w, h) {
-            const { jsPDF } = window.jspdf;
-            const orientation = w > h ? 'l' : 'p';
-            const doc = new jsPDF({ orientation, unit: 'px', format: [w, h] });
+        // Export PDF Format
+        function exportPDF(width, height, filename) {
+            const { jsPDF } = window.jspdf || {};
+            if (!jsPDF) {
+                showToast('jsPDF library not available');
+                return;
+            }
 
-            const swCount = pm.colors.length;
-            const swWidth = w / swCount;
+            const canvas = document.createElement('canvas');
+            canvas.width = width;
+            canvas.height = height;
+            const ctx = canvas.getContext('2d');
+            renderPaletteToCanvas(ctx, width, height);
 
-            pm.colors.forEach((sw, i) => {
-                const rgb = hexToRgb(sw.hex);
-                doc.setFillColor(rgb.r, rgb.g, rgb.b);
-                doc.rect(i * swWidth, 0, swWidth, h, 'F');
-
-                const textCol = getContrastColor(sw.hex);
-                doc.setTextColor(textCol === '#ffffff' ? 255 : 0);
-                doc.setFontSize(Math.max(14, Math.round(swWidth * 0.1)));
-                doc.text(sw.hex, i * swWidth + swWidth / 2, h / 2, { align: 'center' });
+            const orientation = width >= height ? 'landscape' : 'portrait';
+            const pdf = new jsPDF({
+                orientation: orientation,
+                unit: 'px',
+                format: [width, height]
             });
 
-            doc.save(`palette-${Date.now()}.pdf`);
+            pdf.addImage(canvas.toDataURL('image/png'), 'PNG', 0, 0, width, height);
+            pdf.save(filename);
         }
+
+        // Master Export Execution Call
+        function executeExport() {
+            const format = document.getElementById('export-format').value;
+            const dims = calculateExportDimensions();
+            const filename = generateExportFilename(format);
+
+            if (format === 'png') exportPNG(dims.width, dims.height, filename);
+            else if (format === 'svg') exportSVG(dims.width, dims.height, filename);
+            else if (format === 'pdf') exportPDF(dims.width, dims.height, filename);
+
+            closeExportModal();
+        }
+
+        // Event Listeners Setup
+        document.getElementById('btn-execute-export')?.addEventListener('click', executeExport);
 
         // Initialize application
         pm.init(5);
