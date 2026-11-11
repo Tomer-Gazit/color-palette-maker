@@ -370,65 +370,60 @@
     </div>
 
     <!-- Export Modal -->
-<div class="p-6 space-y-5 overflow-y-auto flex-1">
-    <!-- Shareable URL Section (Always Visible at Top) -->
-    <div class="pb-4 border-b border-gray-700 space-y-1.5">
-        <label class="block text-sm font-medium text-gray-300">Shareable Palette Link</label>
-        <div class="flex items-center gap-2">
-            <input type="text" id="export-share-url" readonly class="bg-gray-900 border border-gray-700 text-blue-400 font-mono text-xs rounded-lg p-2.5 w-full outline-none focus:ring-1 focus:ring-blue-500 select-all shadow-inner" placeholder="Generating link...">
-            <button id="btn-copy-share-url" class="h-[38px] px-3.5 bg-blue-600 hover:bg-blue-500 text-white rounded-lg text-xs font-semibold shrink-0 transition-all flex items-center justify-center gap-1.5 active:scale-95 shadow-md" title="Copy URL Link">
-                <i class="fa-regular fa-copy text-xs"></i>
-                <span>Copy</span>
-            </button>
-        </div>
-    </div>
+            <div class="p-6 space-y-5 overflow-y-auto flex-1">
+                <!-- Shareable URL Section (Top of Export Modal) -->
+                <div class="pb-4 border-b border-gray-700 space-y-1.5">
+                    <label class="block text-sm font-medium text-gray-300">Shareable Palette Link</label>
+                    <div class="flex items-center gap-2">
+                        <input type="text" id="export-share-url" readonly class="bg-gray-900 border border-gray-700 text-blue-400 font-mono text-xs rounded-lg p-2.5 w-full outline-none focus:ring-1 focus:ring-blue-500 select-all shadow-inner" placeholder="Generating link...">
+                        <button id="btn-copy-share-url" class="h-[38px] px-3.5 bg-blue-600 hover:bg-blue-500 text-white rounded-lg text-xs font-semibold shrink-0 transition-all flex items-center justify-center gap-1.5 active:scale-95 shadow-md" title="Copy URL Link">
+                            <i class="fa-regular fa-copy text-xs"></i>
+                            <span>Copy</span>
+                        </button>
+                    </div>
+                </div>
 
-    <!-- File Download Options -->
-    <div>
-        <label class="block mb-1.5 text-sm font-medium text-gray-300">File Format</label>
-        <select id="export-format" class="bg-gray-900 border border-gray-700 text-white text-sm rounded-md block w-full p-2.5">
-            <option value="png" selected>PNG Image</option>
-            <option value="svg">SVG Vector</option>
-            <option value="pdf">PDF Document</option>
-        </select>
-    </div>
+                <!-- File Format Selection -->
+                <div>
+                    <label class="block mb-1.5 text-sm font-medium text-gray-300">File Format</label>
+                    <select id="export-format" class="bg-gray-900 border border-gray-700 text-white text-sm rounded-md block w-full p-2.5">
+                        <option value="png" selected>PNG Image</option>
+                        <option value="svg">SVG Vector</option>
+                        <option value="pdf">PDF Document</option>
+                    </select>
+                </div>
+                <div id="export-preset-container">
+                    <label class="block mb-1.5 text-sm font-medium text-gray-300">Aspect Ratio Preset</label>
+                    <select id="export-preset" class="bg-gray-900 border border-gray-700 text-white text-sm rounded-md block w-full p-2.5">
+                        <option value="wallpaper">Device Wallpaper Ratio</option>
+                        <option value="viewport">Current Viewport Ratio</option>
+                        <option value="square">Square Ratio (1:1)</option>
+                        <option value="16:9">16:9 Standard Widescreen</option>
+                        <option value="9:16">9:16 Mobile Vertical Wallpaper</option>
+                        <option value="4:3">4:3 Standard Monitor</option>
+                        <option value="21:9">21:9 Ultrawide</option>
+                    </select>
+                </div>
+                <div id="export-quality-container">
+                    <label class="block mb-1.5 text-sm font-medium text-gray-300">Resolution / Quality</label>
+                    <select id="export-resolution" class="bg-gray-900 border border-gray-700 text-white text-sm rounded-md block w-full p-2.5">
+                        <option value="360p">360p (Low)</option>
+                        <option value="480p">480p (SD)</option>
+                        <option value="720p">720p (HD)</option>
+                        <option value="1080p" selected>1080p (Full HD)</option>
+                        <option value="1440p">1440p (QHD)</option>
+                        <option value="4k">4K (Ultra HD)</option>
+                    </select>
+                </div>
+                <div class="text-xs text-gray-400 bg-gray-900/60 p-3 rounded-lg border border-gray-700 font-mono space-y-1">
+                    <div class="flex justify-between items-center"><span>Calculated Output:</span><span id="export-dim-preview" class="text-blue-400 font-bold">1920 x 1080 px</span></div>
+                    <div class="flex justify-between items-center text-[11px] text-gray-500"><span>Filename Preview:</span><span id="export-filename-preview" class="truncate max-w-[220px]">palette.png</span></div>
+                </div>
+                <button id="btn-execute-export" class="w-full text-white bg-green-600 hover:bg-green-700 font-medium rounded-lg text-sm px-5 py-2.5 text-center transition-colors flex items-center justify-center gap-2 mt-4">
+                    <i class="fa-solid fa-download"></i> Download Palette
+                </button>
+            </div>
     
-    <div id="export-preset-container">
-        <label class="block mb-1.5 text-sm font-medium text-gray-300">Aspect Ratio Preset</label>
-        <select id="export-preset" class="bg-gray-900 border border-gray-700 text-white text-sm rounded-md block w-full p-2.5">
-            <option value="wallpaper">Device Wallpaper Ratio</option>
-            <option value="viewport">Current Viewport Ratio</option>
-            <option value="square">Square Ratio (1:1)</option>
-            <option value="16:9">16:9 Standard Widescreen</option>
-            <option value="9:16">9:16 Mobile Vertical Wallpaper</option>
-            <option value="4:3">4:3 Standard Monitor</option>
-            <option value="21:9">21:9 Ultrawide</option>
-        </select>
-    </div>
-
-    <div id="export-quality-container">
-        <label class="block mb-1.5 text-sm font-medium text-gray-300">Resolution / Quality</label>
-        <select id="export-resolution" class="bg-gray-900 border border-gray-700 text-white text-sm rounded-md block w-full p-2.5">
-            <option value="360p">360p (Low)</option>
-            <option value="480p">480p (SD)</option>
-            <option value="720p">720p (HD)</option>
-            <option value="1080p" selected>1080p (Full HD)</option>
-            <option value="1440p">1440p (QHD)</option>
-            <option value="4k">4K (Ultra HD)</option>
-        </select>
-    </div>
-
-    <div class="text-xs text-gray-400 bg-gray-900/60 p-3 rounded-lg border border-gray-700 font-mono space-y-1">
-        <div class="flex justify-between items-center"><span>Calculated Output:</span><span id="export-dim-preview" class="text-blue-400 font-bold">1920 x 1080 px</span></div>
-        <div class="flex justify-between items-center text-[11px] text-gray-500"><span>Filename Preview:</span><span id="export-filename-preview" class="truncate max-w-[220px]">palette.png</span></div>
-    </div>
-
-    <button id="btn-execute-export" class="w-full text-white bg-green-600 hover:bg-green-700 font-medium rounded-lg text-sm px-5 py-2.5 text-center transition-colors flex items-center justify-center gap-2 mt-4">
-        <i class="fa-solid fa-download"></i> Download Palette
-    </button>
-</div>
-
-
     <!-- Copy Modal -->
     <div id="copy-modal" class="fixed inset-0 bg-black/60 backdrop-blur-sm z-50 hidden flex items-center justify-center p-3 opacity-0 transition-opacity duration-300">
         <div class="bg-gray-800 rounded-xl shadow-2xl w-full max-w-md m-4 overflow-hidden transform scale-95 transition-transform duration-300 max-h-[85vh] flex flex-col">
