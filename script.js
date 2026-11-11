@@ -232,13 +232,20 @@ const MAX_HISTORY = 10;
             return validHexes;
         }
 
+        let urlUpdateTimer = null;
+
         function updateURLWithPalette() {
-            if (!pm || !pm.colors || pm.colors.length === 0) return;
-            const hexList = pm.colors.map(c => c.hex.replace('#', '')).join('-');
-            const newHash = '#' + hexList;
-            if (window.location.hash !== newHash) {
-                history.replaceState(null, '', newHash);
-            }
+            clearTimeout(urlUpdateTimer);
+            urlUpdateTimer = setTimeout(() => {
+                if (!pm || !pm.colors || pm.colors.length === 0) return;
+                const hexList = pm.colors.map(c => c.hex.replace('#', '')).join('-');
+                const newHash = '#' + hexList;
+                
+                // replaceState modifies the current URL entry without creating a new history step
+                if (window.location.hash !== newHash) {
+                    history.replaceState(null, '', newHash);
+                }
+            }, 150); // Updates 150ms after the user stops making changes
         }
 
         function hexToRgb(hex) {
@@ -447,7 +454,7 @@ const MAX_HISTORY = 10;
                         <div class="flex justify-between w-full shrink-0 z-10 pointer-events-auto items-center">
                             <button class="btn-remove p-1 sm:p-1.5 bg-black/20 hover:bg-black/40 rounded-lg transition-all" title="Remove color">
                                 <i class="fa-solid fa-xmark text-xs"></i>
-                            </button>
+                            </div>
                             <div class="flex items-center gap-1">
                                 <button class="btn-inspect p-1 sm:p-1.5 bg-black/20 hover:bg-black/40 rounded-lg transition-all" title="Inspector">
                                     <i class="fa-solid fa-sliders text-xs"></i>
@@ -793,8 +800,13 @@ const MAX_HISTORY = 10;
         if (nativeColorPicker) nativeColorPicker.addEventListener('input', (e) => updateInspectorState(e.target.value));
         if (inputHex) {
             inputHex.addEventListener('input', (e) => {
-                let val = e.target.value.replace('#', '');
-                if (val.length === 6 && /^[0-9A-Fa-f]{6}$/.test(val)) updateInspectorState('#' + val);
+                let val = e.target.value.replace('#', '').trim();
+                if (val.length > 6) val = val.slice(0, 6);
+                e.target.value = val;
+                
+                if (val.length === 6 && /^[0-9A-Fa-f]{6}$/.test(val)) {
+                    updateInspectorState('#' + val);
+                }
             });
         }
 
