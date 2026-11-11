@@ -370,6 +370,12 @@
     </div>
 
     <!-- Export Modal -->
+    <div id="export-modal" class="fixed inset-0 bg-black/60 backdrop-blur-sm z-50 hidden flex items-center justify-center p-3 opacity-0 transition-opacity duration-300">
+        <div class="bg-gray-800 rounded-xl shadow-2xl w-full max-w-md m-4 overflow-hidden transform scale-95 transition-transform duration-300 max-h-[85vh] flex flex-col">
+            <div class="flex justify-between items-center p-4 border-b border-gray-700 shrink-0">
+                <h2 class="text-xl font-bold">Export Palette</h2>
+                <button id="btn-close-export" class="text-gray-400 hover:text-white p-1" title="Close"><i class="fa-solid fa-xmark text-xl"></i></button>
+            </div>
             <div class="p-6 space-y-5 overflow-y-auto flex-1">
                 <!-- Shareable URL Section (Top of Export Modal) -->
                 <div class="pb-4 border-b border-gray-700 space-y-1.5">
@@ -423,7 +429,9 @@
                     <i class="fa-solid fa-download"></i> Download Palette
                 </button>
             </div>
-    
+        </div>
+    </div>
+
     <!-- Copy Modal -->
     <div id="copy-modal" class="fixed inset-0 bg-black/60 backdrop-blur-sm z-50 hidden flex items-center justify-center p-3 opacity-0 transition-opacity duration-300">
         <div class="bg-gray-800 rounded-xl shadow-2xl w-full max-w-md m-4 overflow-hidden transform scale-95 transition-transform duration-300 max-h-[85vh] flex flex-col">
