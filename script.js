@@ -17,8 +17,16 @@ const MAX_HISTORY = 10;
             }
             init(initialCount = 5) {
                 this.colors = [];
-                for(let i=0; i<initialCount; i++) {
-                    this.colors.push(this.createSwatch(generateRandomHex()));
+                const urlColors = getColorsFromURL();
+
+                if (urlColors.length > 0) {
+                    urlColors.forEach(hex => {
+                        this.colors.push(this.createSwatch(hex));
+                    });
+                } else {
+                    for(let i = 0; i < initialCount; i++) {
+                        this.colors.push(this.createSwatch(generateRandomHex()));
+                    }
                 }
                 this.saveGlobalState();
             }
@@ -36,12 +44,16 @@ const MAX_HISTORY = 10;
                     this.globalHistory = this.globalHistory.slice(0, this.globalHistoryIndex + 1);
                 }
                 const snapshot = JSON.stringify(this.colors);
-                if(this.globalHistory.length > 0 && this.globalHistory[this.globalHistoryIndex] === snapshot) return;
+                if(this.globalHistory.length > 0 && this.globalHistory[this.globalHistoryIndex] === snapshot) {
+                    updateURLWithPalette();
+                    return;
+                }
 
                 this.globalHistory.push(snapshot);
                 if(this.globalHistory.length > MAX_HISTORY + 1) this.globalHistory.shift();
                 else this.globalHistoryIndex++;
                 updateToolbarUI();
+                updateURLWithPalette();
             }
             undoGlobal() {
                 if (this.globalHistoryIndex > 0) {
@@ -49,6 +61,7 @@ const MAX_HISTORY = 10;
                     this.colors = JSON.parse(this.globalHistory[this.globalHistoryIndex]);
                     renderPalette();
                     updateToolbarUI();
+                    updateURLWithPalette();
                 }
             }
             redoGlobal() {
@@ -57,6 +70,7 @@ const MAX_HISTORY = 10;
                     this.colors = JSON.parse(this.globalHistory[this.globalHistoryIndex]);
                     renderPalette();
                     updateToolbarUI();
+                    updateURLWithPalette();
                 }
             }
             saveLocalState(id, newHex) {
@@ -196,6 +210,35 @@ const MAX_HISTORY = 10;
 
         function generateRandomHex() {
             return '#' + Math.floor(Math.random()*16777215).toString(16).padStart(6, '0').toUpperCase();
+        }
+        
+        function getColorsFromURL() {
+            const raw = (window.location.hash || window.location.search).replace(/^[#?]/, '');
+            if (!raw) return [];
+
+            const cleanStr = raw.replace(/^(colors|palette)=/i, '');
+            const tokens = cleanStr.split(/[-_,]/);
+
+            const validHexes = [];
+            tokens.forEach(t => {
+                let hex = t.replace('#', '').trim();
+                if (hex.length === 3) {
+                    hex = hex.split('').map(c => c + c).join('');
+                }
+                if (/^[0-9A-Fa-f]{6}$/.test(hex)) {
+                    validHexes.push('#' + hex.toUpperCase());
+                }
+            });
+            return validHexes;
+        }
+
+        function updateURLWithPalette() {
+            if (!pm || !pm.colors || pm.colors.length === 0) return;
+            const hexList = pm.colors.map(c => c.hex.replace('#', '')).join('-');
+            const newHash = '#' + hexList;
+            if (window.location.hash !== newHash) {
+                history.replaceState(null, '', newHash);
+            }
         }
 
         function hexToRgb(hex) {
@@ -1333,15 +1376,31 @@ const MAX_HISTORY = 10;
             const formatSel = document.getElementById('export-format');
             const dimPreview = document.getElementById('export-dim-preview');
             const filenamePreview = document.getElementById('export-filename-preview');
+            const shareUrlInput = document.getElementById('export-share-url');
             
+            updateURLWithPalette();
+            if (shareUrlInput) {
+                shareUrlInput.value = window.location.href;
+            }
+
             if (!formatSel) return;
             
+            const format = formatSel.value;
             const dims = calculateExportDimensions();
-            const filename = generateExportFilename(formatSel.value);
+            const filename = generateExportFilename(format);
 
             if (dimPreview) dimPreview.innerText = `${dims.width} x ${dims.height} px`;
             if (filenamePreview) filenamePreview.innerText = filename;
         }
+
+        document.getElementById('btn-copy-share-url')?.addEventListener('click', () => {
+            updateURLWithPalette();
+            const shareUrlInput = document.getElementById('export-share-url');
+            const linkToCopy = shareUrlInput ? shareUrlInput.value : window.location.href;
+            
+            copyToClipboard(linkToCopy);
+            showToast('Shareable link copied to clipboard!');
+        });
 
         [exportFormatSel, exportPresetSel, exportQualitySel].forEach(el => {
             if (el) el.addEventListener('change', updateExportDimPreview);
